@@ -1,0 +1,5 @@
+*.o
+*.so
+src/cholmod.c
+*/__pycache__
+*/.pytest_cache
