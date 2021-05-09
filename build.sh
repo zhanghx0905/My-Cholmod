@@ -5,11 +5,12 @@ python3 setup.py build_ext -b ../tests -t ../tests
 cd ../tests
 make
 # "test correctness"
-pytest-3
+# pytest-3
 # "test performance"
 python3 test_performance.py
 echo
 ./cholmod_c_test ./test_data/ted_B.mtx
 ./cholmod_c_test ./test_data/s3rmt3m3.mtx
-
+./cholmod_c_test ./test_data/thermomech_dM.mtx
+./cholmod_c_test ./test_data/parabolic_fem.mtx
 make clean

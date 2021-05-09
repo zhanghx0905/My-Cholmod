@@ -14,7 +14,7 @@
 
 #include "cholmod_function.h"
 
-#define NTRIALS 100
+#define NTRIALS 100s
 #define DEBUG 0
 
 /* ff is a global variable so that it can be closed by my_handler */
@@ -36,7 +36,7 @@ static void my_handler(int status, const char *file, int line,
 
 int main(int argc, char **argv)
 {
-    double t, ta, tf, tot, anorm;
+    double t, ta, tf, tot = 10000, anorm;
     FILE *f;
     cholmod_sparse *A;
     double beta[2], xlnz;
@@ -89,7 +89,7 @@ int main(int argc, char **argv)
     /* ---------------------------------------------------------------------- */
     /* read in a matrix */
     /* ---------------------------------------------------------------------- */
-    printf("CHOLMOD Performance Test for %s\n", argv[1]);
+
 #if DEBUG
     cholmod_version(ver);
     printf("cholmod version %d.%d.%d\n", ver[0], ver[1], ver[2]);
@@ -133,6 +133,7 @@ int main(int argc, char **argv)
         printf("Factorizing A\n");
     }
 #endif
+    printf("CHOLMOD Performance Test for %s\n", argv[1]);
     for (int trail = 0; trail < NTRIALS; trail++)
     {
         t = CPUTIME;
@@ -154,9 +155,9 @@ int main(int argc, char **argv)
             tf = MAX(tf, 0);
         }
 
-        tot += ta + tf;
+        tot = MIN(tot, ta + tf);
+        cholmod_free_factor(&L, cm);
     }
-    tot /= NTRIALS;
 
 #if DEBUG
     // printf("factor flops %g nnz(L) %15.0f (w/no amalgamation)\n",
@@ -178,7 +179,6 @@ int main(int argc, char **argv)
     printf("Overall time elasped:  %12.6f s\n",
            tot); //(tot == 0) ? 0 : (1e-6 * (cm->fl + 4 * cm->lnz) / tot));
 
-    cholmod_free_factor(&L, cm);
     cholmod_free_sparse(&A, cm);
     cholmod_finish(cm);
 
