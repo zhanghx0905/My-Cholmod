@@ -14,7 +14,7 @@
 
 #include "cholmod_function.h"
 
-#define NTRIALS 100s
+#define NTRIALS 100
 #define DEBUG 0
 
 /* ff is a global variable so that it can be closed by my_handler */
