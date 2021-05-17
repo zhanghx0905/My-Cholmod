@@ -1,4 +1,46 @@
-#### 环境配置
+# 开发日志
+
+### 性能测试
+
+| 测例          | nrow, ncol | nz      |
+| ------------- | ---------- | ------- |
+| ted_B         | 10605      | 77592   |
+| s3rmt3m3      | 5357       | 106526  |
+| thermomech_dM | 204316     | 813716  |
+| parabolic_fem | 525825     | 2100225 |
+
+测试结果：
+
+```
+Py Performance Test for ./test_data/ted_B.mtx
+Overall time elasped:      0.004019 s
+Py Performance Test for ./test_data/s3rmt3m3.mtx
+Overall time elasped:      0.025165 s
+Py Performance Test for ./test_data/thermomech_dM.mtx
+Overall time elasped:      0.704579 s
+Py Performance Test for ./test_data/parabolic_fem.mtx
+Overall time elasped:      5.988630 s
+
+CHOLMOD Performance Test for ./test_data/ted_B.mtx
+Overall time elasped:      0.003957 s
+CHOLMOD Performance Test for ./test_data/s3rmt3m3.mtx
+Overall time elasped:      0.023791 s
+CHOLMOD Performance Test for ./test_data/thermomech_dM.mtx
+Overall time elasped:      0.686783 s
+CHOLMOD Performance Test for ./test_data/parabolic_fem.mtx
+Overall time elasped:      5.768847 s
+```
+
+与直接调用 C 相比，性能损失在 5% 以内。
+
+### 算法原理
+
+> Fill-reducing permutation P 是为了减少分解后 L 中新增非零元素 (fill-in) 的个数。
+
+TODO
+
+
+### 环境配置
 
 新装了一个 WSL ubuntu 20.04.
 
@@ -14,13 +56,9 @@ pip3 install Cython scikit-sparse
 
 装好后，CHOLMOD 的头文件在 `/usr/include/suitesparse` 下.
 
-### 算法原理
+### 代码实现
 
-> Fill-reducing permutation P 是为了减少分解后 L 中新增非零元素 (fill-in) 的个数。
-
-### 核心源码
-
-#### 常量定义
+#### C 常量定义
 
 索引类型 itype
 
@@ -75,17 +113,7 @@ cdef enum:
     CHOLMOD_NESDIS, CHOLMOD_COLAMD, CHOLMOD_POSTORDERED
 ```
 
-Linear System Type，用于 `solve` 传参。
-
-> 如果不实现 solve 相关功能，似乎不必要。
-
-```cython
-cdef enum:
-	CHOLMOD_A, CHOLMOD_LDLt, CHOLMOD_LD, CHOLMOD_DLt, CHOLMOD_L
-    CHOLMOD_Lt, CHOLMOD_D, CHOLMOD_P, CHOLMOD_Pt
-```
-
-#### 重要 C 结构体
+#### C 结构体定义
 
 `cholmod_common` 配置工作参数：
 
@@ -119,15 +147,6 @@ ctypedef struct cholmod_sparse:
     int packed	# 通常 = 1 
 ```
 
-`cholmod_dense`
-
-```cython
-ctypedef struct cholmod_dense:
-    size_t nrow, ncol, nzmax, d	# d is leading dimension, just set = nrow
-    void * x	# nrow * ncol
-    int dtype, xtype
-```
-
 `cholmod_factor`
 
 ```cython
@@ -140,21 +159,9 @@ ctypedef struct cholmod_factor:
     # is_super: TRUE if supernodal, FALSE if simplicial
     # is_monotonic:  TRUE if columns of L appear in order 0..n-1.
     int is_ll, is_super, is_monotonic
-    
-    void * x
-    # for simplicial:
-    size_t nzmax  	# size of x
-    void * p		# col pointers
-    
-    # for supernodel
-    size_t nsuper	# number of supernodes
-    size_t xsize	# size of x, real part of supernodes
-    void * super_ "super"	# size nsuper+1, first col in each supernode
-    void * pi		# size nsuper+1, pointers to integer patterns
-    void * px		# size nsuper+1, pointers to real parts
 ```
 
-#### 重要 C 接口
+#### C 接口定义
 
 以下都是完成分解的必要接口。
 
@@ -187,8 +194,3 @@ int cholmod_factorize_p(cholmod_sparse *, double beta[2],
                         cholmod_common *) except *
 ```
 
-#### 重要 Py 接口
-
-`cholesky` 调用 `analyze` 和 `_cholesky_inplace`, 与之相关的接口都是必要的。
-
-`L_D` 和 `L`、 `P` 是 `Factor` 的必要功能。
