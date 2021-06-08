@@ -14,7 +14,7 @@
 
 #include "cholmod_function.h"
 
-#define NTRIALS 100
+int NTRIALS = 10;
 #define DEBUG 0
 
 /* ff is a global variable so that it can be closed by my_handler */
@@ -58,10 +58,16 @@ int main(int argc, char **argv)
                        "unable to open file");
         }
         ff = f;
+        if (argc > 2) {
+            NTRIALS = atoi(argv[2]);
+#if DEBUG
+            printf("NTRAILS = %d\n", NTRIALS);
+#endif
+        }
     }
     else
     {
-        f = stdin;
+        printf("usage: %s <testcase path> <test times = 10>", argc[0])
     }
 
     /* ---------------------------------------------------------------------- */
