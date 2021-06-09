@@ -57,8 +57,6 @@ def test_big_matrix():
         matrix = mmread(f"./test_data/{name}.mtx")
         if sparse.issparse(matrix):
             matrix = matrix.tocsc()
-        # from numpy.linalg import cond
-        # print(f"name: {name}, shape: {matrix.shape} 2-cond: {cond(matrix.todense())}")
         return matrix
 
     for problem in range(1, 5):
@@ -80,3 +78,10 @@ def test_big_matrix():
                 assert_allclose((L @ D @ L.T).todense(), pXtX)
                 assert_allclose(np.prod(np.diag(D.todense())),
                                 np.linalg.det(XtX.todense()))
+
+
+if __name__ == '__main__':
+    test_beta()
+    test_big_matrix()
+    test_natural_ordering()
+    print("cholmod correctness test OK")

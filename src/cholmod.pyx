@@ -400,7 +400,10 @@ def _cholesky(A, symmetric, beta=0, mode='auto', ordering_method="default"):
     cdef Factor f = Factor()
     f._common = common
     f._factor = c_f
-    f._cholesky_inplace(A, symmetric, beta=beta)
+    if common._use_long:
+        cholmod_l_factorize_p(&c_A, [beta, 0], NULL, 0, f._factor, &common._common)
+    else:
+        cholmod_factorize_p(&c_A, [beta, 0], NULL, 0, f._factor, &common._common)
     return f
 
 __all__ = ["cholesky", "cholesky_AAt"]

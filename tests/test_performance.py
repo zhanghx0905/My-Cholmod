@@ -3,12 +3,14 @@ import os
 from time import perf_counter
 
 import numpy as np
-from cholmod import cholesky
+from cholmod import _modes, _ordering_methods, cholesky
 from scipy import io
 
-testcases = ['ted_B', 's3rmt3m3', 'thermomech_dM', 'parabolic_fem',
-             ]  # 'nd24k', 'nd12k', 'boneS10', 'PFlow_742']
-NTRIALS = 10
+testcases = {'ted_B': 100, 's3rmt3m3': 100,
+             'thermomech_dM': 10,
+             'parabolic_fem': 10,
+             'nd24k': 3, 'nd12k': 3, 'boneS10': 3, 'PFlow_742': 3}
+
 
 os.system('make')
 os.system('rm *.o')
@@ -21,17 +23,26 @@ def read_mtx(path: str):
     return matrix
 
 
-for problem in testcases:
+modes = {key: _modes[key] for key in ['simplicial', 'supernodal']}
+ordering_methods = {key: _ordering_methods[key] for key in ['amd', 'metis']}
+
+for problem, trail in testcases.items():
     # 保证测例均为 SPD
     path = f"./test_data/{problem}.mtx"
     X = read_mtx(path)
-    print(f"Py Performance Test for {problem}")
-    elapsed = 1000.
-    for _ in range(NTRIALS):
-        start = perf_counter()
-        cholesky(X)
-        elapsed = min(elapsed, perf_counter() - start)
-    print(f"Overall time elasped:  {elapsed:12.6f} s")
+    print(f"Testcase {problem}")
 
-    ret = os.popen(f'./cholmod_c_test {path} {NTRIALS}').read()
-    print(ret)
+    for mode in modes.keys():
+        for ordering in ordering_methods.keys():
+            print(f'mode {mode}, ordering method {ordering}')
+            print(f"Py Performance Test")
+            elapsed = 1e10
+            for _ in range(trail):
+                start = perf_counter()
+                cholesky(X, mode=mode, ordering_method=ordering)
+                elapsed = min(elapsed, perf_counter() - start)
+            print(f"Overall time elasped:  {elapsed:12.6f} s")
+            print(f"C Performance Test")
+            ctest = os.popen(f'./cholmod_c_test -f {path} -t{trail} '
+                             f'-m{modes[mode]} -o{ordering_methods[ordering]}')
+            print(ctest.read())
