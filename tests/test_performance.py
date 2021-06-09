@@ -7,9 +7,9 @@ from cholmod import _modes, _ordering_methods, cholesky
 from scipy import io
 
 testcases = {'ted_B': 100, 's3rmt3m3': 100,
-             'thermomech_dM': 10,
-             'parabolic_fem': 10,
-             'nd24k': 3, 'nd12k': 3, 'boneS10': 3, 'PFlow_742': 3}
+             'thermomech_dM': 10, 'parabolic_fem': 10,
+             'nd12k': 3, 'boneS10': 3,
+             'nd24k': 2, 'PFlow_742': 2}
 
 
 os.system('make')
