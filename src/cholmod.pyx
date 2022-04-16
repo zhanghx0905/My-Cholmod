@@ -1,7 +1,9 @@
 #cython: binding = True
-#cython: language_level = 3
 
 cimport numpy as np
+from _declarations cimport *
+from libc.stdlib cimport malloc
+from cython.operator cimport dereference as deref
 
 import warnings
 
@@ -11,83 +13,6 @@ from scipy import sparse
 # initialize the numpy C API
 np.import_array()
 
-cdef extern from "cholmod.h":
-    cdef enum:
-        CHOLMOD_INT, CHOLMOD_LONG
-        CHOLMOD_REAL, CHOLMOD_COMPLEX
-        CHOLMOD_DOUBLE
-        CHOLMOD_AUTO, CHOLMOD_SIMPLICIAL, CHOLMOD_SUPERNODAL
-        CHOLMOD_NATURAL, CHOLMOD_GIVEN, CHOLMOD_AMD, CHOLMOD_METIS, CHOLMOD_NESDIS, CHOLMOD_COLAMD, CHOLMOD_POSTORDERED
-
-    ctypedef int SuiteSparse_long
-
-    ctypedef struct cholmod_method_struct:
-        int ordering
-
-    ctypedef struct cholmod_common:
-        int supernodal
-        int status
-        int itype
-        int print
-        int nmethods, postorder
-        cholmod_method_struct * method
-        void (*error_handler)(int status, const char * file, int line, const char * msg)
-
-    ctypedef struct cholmod_sparse:
-        size_t nrow, ncol, nzmax
-        void * p # column pointers
-        void * i # row indices
-        void * x
-        int stype # 0 = regular, -1 = lower triangular
-        int itype, dtype, xtype
-        int sorted
-        int packed
-
-    ctypedef struct cholmod_factor:
-        size_t n
-        void * Perm
-        int itype, xtype
-        int is_ll, is_super, is_monotonic
-
-    int cholmod_start(cholmod_common *) except *
-    int cholmod_l_start(cholmod_common *) except *
-
-    int cholmod_finish(cholmod_common *) except *
-    int cholmod_l_finish(cholmod_common *) except *
-
-    int cholmod_free_sparse(cholmod_sparse **, cholmod_common *) except *
-    int cholmod_l_free_sparse(cholmod_sparse **, cholmod_common *) except *
-
-    int cholmod_free_factor(cholmod_factor **, cholmod_common *) except *
-    int cholmod_l_free_factor(cholmod_factor **, cholmod_common *) except *
-
-    cholmod_factor * cholmod_copy_factor(cholmod_factor *, cholmod_common *) except? NULL
-    cholmod_factor * cholmod_l_copy_factor(cholmod_factor *, cholmod_common *) except? NULL
-
-    cholmod_factor * cholmod_analyze(cholmod_sparse *, cholmod_common *) except? NULL
-    cholmod_factor * cholmod_l_analyze(cholmod_sparse *, cholmod_common *) except? NULL
-
-    int cholmod_factorize_p(cholmod_sparse *, double beta[2],
-                            int * fset, size_t fsize,
-                            cholmod_factor *,
-                            cholmod_common *) except *
-    int cholmod_l_factorize_p(cholmod_sparse *, double beta[2],
-                              SuiteSparse_long * fset, size_t fsize,
-                              cholmod_factor *,
-                              cholmod_common *) except *
-
-    int cholmod_change_factor(int to_xtype, int to_ll, int to_super,
-                              int to_packed, int to_monotonic,
-                              cholmod_factor *, cholmod_common *) except *
-    int cholmod_l_change_factor(int to_xtype, int to_ll, int to_super,
-                                int to_packed, int to_monotonic,
-                                cholmod_factor *, cholmod_common *) except *
-
-    cholmod_sparse * cholmod_factor_to_sparse(cholmod_factor *,
-                                              cholmod_common *) except? NULL
-    cholmod_sparse * cholmod_l_factor_to_sparse(cholmod_factor *,
-                                                cholmod_common *) except? NULL
-
 cdef class Common
 cdef class Factor
 
@@ -95,9 +20,6 @@ class CholmodError(Exception):
     pass
 
 class CholmodWarning(UserWarning):
-    pass
-
-class CholmodTypeConversionWarning(CholmodWarning, sparse.SparseEfficiencyWarning):
     pass
 
 cdef int _integer_typenum = np.NPY_INT32
@@ -165,7 +87,7 @@ cdef _cholmod_sparse_to_scipy_sparse(cholmod_sparse * m, Common common):
 
 cdef void _error_handler(
         int status, const char * file, int line, const char * msg) except * with gil:
-    full_msg = f"{file.decode()}:{line:d}: {msg.decode()}(code = {status})"
+    full_msg = f"{file}:{line:d}: {msg}(code = {status})"
     if status < 0:
         raise CholmodError(full_msg)
     elif status != 0:
@@ -204,12 +126,12 @@ cdef class Common:
         if self._complex:
             # All numeric types can be upcast to complex:
             # asfortranarray: Return an array laid out in Fortran order in memory.
-            return np.asfortranarray(arr, dtype=_complex_py_dtype)
+            return np.ascontiguousarray(arr, dtype=_complex_py_dtype)
         else:
             if issubclass(arr.dtype.type, np.complexfloating):
                 raise CholmodError("Refuse to downcast complex types to real")
             else:
-                return np.asfortranarray(arr, dtype=_real_py_dtype)
+                return np.ascontiguousarray(arr, dtype=_real_py_dtype)
 
     cdef object _init_view_sparse(self, cholmod_sparse *out, m, symmetric):
         if symmetric and m.shape[0] != m.shape[1]:
@@ -230,6 +152,7 @@ cdef class Common:
         out.xtype = self._xtype
         out.sorted = 1
         out.packed = 1
+        # necessary!
         return m, indptr, indices, data
 
 cdef class Factor:
@@ -343,6 +266,9 @@ _ordering_methods = {
     "best": None,
 }
 
+modes = set(_modes.keys())
+ordering_methods = set(_ordering_methods.keys())
+
 def cholesky(A, beta=0, mode="auto", ordering_method="default"):
     """
     Returns a `Factor` object represented the Cholesky decomposition of
@@ -406,4 +332,30 @@ def _cholesky(A, symmetric, beta=0, mode='auto', ordering_method="default"):
         cholmod_factorize_p(&c_A, [beta, 0], NULL, 0, f._factor, &common._common)
     return f
 
-__all__ = ["cholesky", "cholesky_AAt"]
+
+def qr(A):
+    A = _check_for_csc(A)
+    cdef Common common = Common(issubclass(A.dtype.type, np.complexfloating), _use_long=True)
+    cdef cholmod_sparse c_A
+    cdef object ref = common._init_view_sparse(&c_A, A, symmetric=False)
+
+
+    cdef cholmod_sparse** c_Q = <cholmod_sparse **>malloc(sizeof(cholmod_sparse*))
+    cdef cholmod_sparse** c_R = <cholmod_sparse **>malloc(sizeof(cholmod_sparse*))
+    cdef long** c_E = <long **>malloc(sizeof(long*))
+    cdef int rank = SuiteSparseQR_C_QR(SPQR_ORDERING_DEFAULT,
+                                       SPQR_NO_TOL,
+                                       A.shape[0],
+                                       &c_A,
+                                       c_Q, c_R, c_E,
+                                       &common._common)
+
+    Q = _cholmod_sparse_to_scipy_sparse(deref(c_Q), common)
+    R = _cholmod_sparse_to_scipy_sparse(deref(c_R), common)
+    cdef np.ndarray E = np.arange(A.shape[1], dtype=np.int64)
+    if c_E != NULL:
+        E = np.PyArray_SimpleNewFromData(1, [A.shape[1]], np.NPY_INT64, deref(c_E))
+    return Q, R, E, rank
+
+
+__all__ = ["cholesky", "cholesky_AAt", "qr"]

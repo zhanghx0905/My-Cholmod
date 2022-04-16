@@ -1,11 +1,11 @@
 all: cholmod_c_test
 
-include ../lib/SuiteSparse_config.mk
-
-LIB2 = $(LDFLAGS) -lcholmod -lamd -lcolamd -lsuitesparseconfig \
-	$(LIB_WITH_PARTITION) $(LAPACK) $(BLAS) $(LDLIBS)
+LIB2 = -lcholmod -lamd -lcolamd -lsuitesparseconfig \
+	-llapack -lblas -lm -lrt
 I = -I/usr/include/suitesparse
-C = $(CC) $(CF) $(CHOLMOD_CONFIG) $(CONFIG_PARTITION)
+C = cc -O3 -fexceptions -fPIC -fopenmp -DNPARTITION -DNCAMD
+RM = rm -f
+CLEAN = *.o
 
 cholmod_c_test: cholmod_c_test.c
 	$(C) -o cholmod_c_test $(I) cholmod_c_test.c $(LIB2)

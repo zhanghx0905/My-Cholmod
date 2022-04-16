@@ -112,24 +112,11 @@ int main(int argc, char **argv) {
   /* read in a matrix */
   /* ---------------------------------------------------------------------- */
 
-#if DEBUG
-  cholmod_version(ver);
-  printf("cholmod version %d.%d.%d\n", ver[0], ver[1], ver[2]);
-  SuiteSparse_version(ver);
-  printf("SuiteSparse version %d.%d.%d\n", ver[0], ver[1], ver[2]);
-#endif
   A = cholmod_read_sparse(f, cm);
   if (ff != NULL) {
     fclose(ff);
     ff = NULL;
   }
-#if DEBUG
-  anorm = cholmod_norm_sparse(A, 0, cm);
-  printf("norm (A,inf) = %g\n", anorm);
-  printf("norm (A,1)   = %g\n", cholmod_norm_sparse(A, 1, cm));
-  cholmod_print_sparse(A, "A", cm);
-#endif
-
   if (A->nrow > A->ncol) {
     /* Transpose A so that A'A+beta*I will be factorized instead */
     cholmod_sparse *C = cholmod_transpose(A, 2, cm);
@@ -142,13 +129,7 @@ int main(int argc, char **argv) {
   /* ---------------------------------------------------------------------- */
   /* analyze and factorize */
   /* ---------------------------------------------------------------------- */
-#if DEBUG
-  if (A->stype == 0) {
-    printf("Factorizing A*A'\n");
-  } else {
-    printf("Factorizing A\n");
-  }
-#endif
+
 
   for (int trail = 0; trail < trails; trail++) {
     t = CPUTIME;
@@ -162,20 +143,6 @@ int main(int argc, char **argv) {
     tot = MIN(tot, CPUTIME - t);
     cholmod_free_factor(&L, cm);
   }
-
-#if DEBUG
-  // printf("factor flops %g nnz(L) %15.0f (w/no amalgamation)\n",
-  //        cm->fl, cm->lnz);
-  if (A->stype != 0) {
-    printf("nnz(A):    %15.0f\n", cm->anz);
-  } else {
-    printf("nnz(A*A'): %15.0f\n", cm->anz);
-  }
-// if (cm->lnz > 0)
-// {
-//     printf("flops / nnz(L):  %8.1f\n", cm->fl / cm->lnz);
-// }
-#endif
 
   printf("Overall time elasped:  %12.6f s\n", tot);
 

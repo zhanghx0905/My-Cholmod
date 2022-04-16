@@ -1,8 +1,8 @@
 *.o
 *.so
 *.zip
-src/cholmod.c
+src/*.c
 tests/cholmod_c_test
 tests/test_data/*mtx
-*/__pycache__
-*/.pytest_cache
+__pycache__
+.pytest_cache

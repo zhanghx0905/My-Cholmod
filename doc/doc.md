@@ -54,9 +54,8 @@ def cholesky_AAt(A, beta=0, mode="auto", ordering_method="default") -> Factor
 def P(self) -> np.ndarray
 ```
 
-返回 Fill-reducing 排列 $P$.
+返回 Fill-reducing 排列 $p$.
 
-`Factor` 表示的分解是对 $A[\text{P[:, None]}, \text{P[None, :]}]$ 做的。
 
 #### `L_D`
 
@@ -66,7 +65,7 @@ def L_D(self) -> (sparse.csc_matrix, sparse.dia_matrix)
 
 返回下三角矩阵 $L$ 和对角矩阵 $D$，使得
 $$
-LDL^T=A[\text{P[:, None]}, \text{P[None, :]}]
+LDL^T=A[\text{p[:, None]}, \text{p[None, :]}]=P^T A P
 $$
 
 #### `L`
@@ -77,7 +76,7 @@ def L(self) -> sparse.csc_matrix
 
 返回下三角矩阵 $L$ 使得
 $$
-LL^T=A[\text{P[:, None]}, \text{P[None, :]}]
+LL^T=A[\text{P[:, None]}, \text{P[None, :]}] = P^T A P
 $$
 
 
@@ -88,3 +87,14 @@ def copy(self) -> Factor
 ```
 
 返回当前 `Factor` 的一个深拷贝。
+
+### qr
+
+```python
+def qr(A: sparse.csc_matrix) \
+    -> Tuple[sparse.csc_matrix, sparse.csc_matrix, np.ndarray, int]
+```
+
+$$
+QR = AP
+$$

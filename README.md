@@ -1,8 +1,6 @@
-# my-cholmod
+# pyCholmod
 
-Python 下大规模稀疏矩阵的 Cholesky 分解算法
-
-A Cython wrapper for the SuiteSparse CHOLMOD library for sparse Cholesky decomposition
+A Cython wrapper for SuiteSparseCHOLMOD and SuiteSparseQR for sparse decomposition 
 
 ### References
 

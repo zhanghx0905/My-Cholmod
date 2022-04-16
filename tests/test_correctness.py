@@ -1,16 +1,14 @@
 ''' 用于测试实现正确性的测例 '''
+
 from functools import partial
+from itertools import product
 
 import numpy as np
+
 from numpy.testing import assert_allclose, assert_array_equal
 from scipy import sparse
 
-from cholmod import (_modes, _ordering_methods, cholesky,
-                     cholesky_AAt)
-
-
-modes = _modes.keys()
-ordering_methods = _ordering_methods.keys()
+from cholmod import cholesky, cholesky_AAt, modes, ordering_methods
 
 assert_allclose = partial(assert_allclose, rtol=1e-5, atol=1e-8)
 
@@ -25,21 +23,21 @@ complex_matrix = sparse.csc_matrix([[10, 0, 3 - 1j, 0],
 
 
 def test_beta():
-    for matrix in [real_matrix, complex_matrix]:
-        for beta in [0, 1, 3.4]:
-            mat_plus_beta = matrix + beta * sparse.eye(*matrix.shape)
-            for use_long in [False, True]:
-                if use_long:
-                    mat_plus_beta.indices = np.asarray(mat_plus_beta.indices, dtype=np.int64)
-                    mat_plus_beta.indptr = np.asarray(mat_plus_beta.indptr, dtype=np.int64)
-                for ordering_method in ordering_methods:
-                    for mode in modes:
-                        f = cholesky(matrix, beta=beta, mode=mode,
-                                     ordering_method=ordering_method)
-                        L, P = f.L(), f.P()
-                        assert np.allclose(
-                            (L @ L.H).todense(),
-                            mat_plus_beta.todense()[P[:, np.newaxis], P[np.newaxis, :]])
+    for matrix, beta in product([real_matrix, complex_matrix],
+                                [0, 1, 3.4]):
+        mat_plus_beta = matrix + beta * sparse.eye(*matrix.shape)
+        for use_long in [False, True]:
+            if use_long:
+                mat_plus_beta.indices = np.asarray(
+                    mat_plus_beta.indices, dtype=np.int64)
+                mat_plus_beta.indptr = np.asarray(
+                    mat_plus_beta.indptr, dtype=np.int64)
+            for ordering_method, mode in product(ordering_methods, modes):
+                f = cholesky(matrix, beta, mode, ordering_method)
+                L, P = f.L(), f.P()
+                assert np.allclose(
+                    (L @ L.H).todense(),
+                    mat_plus_beta.todense()[P[:, np.newaxis], P[np.newaxis, :]])
 
 
 def test_natural_ordering():
@@ -78,10 +76,3 @@ def test_big_matrix():
                 assert_allclose((L @ D @ L.T).todense(), pXtX)
                 assert_allclose(np.prod(np.diag(D.todense())),
                                 np.linalg.det(XtX.todense()))
-
-
-if __name__ == '__main__':
-    test_beta()
-    test_big_matrix()
-    test_natural_ordering()
-    print("cholmod correctness test OK")

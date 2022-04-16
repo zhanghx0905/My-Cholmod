@@ -1,5 +1,6 @@
 ''' 用于测试模块性能的测例 '''
 import os
+from itertools import product
 from time import perf_counter
 
 import numpy as np
@@ -32,17 +33,16 @@ for problem, trail in testcases.items():
     X = read_mtx(path)
     print(f"Testcase {problem}")
 
-    for mode in modes.keys():
-        for ordering in ordering_methods.keys():
-            print(f'mode {mode}, ordering method {ordering}')
-            print(f"Py Performance Test")
-            elapsed = 1e10
-            for _ in range(trail):
-                start = perf_counter()
-                cholesky(X, mode=mode, ordering_method=ordering)
-                elapsed = min(elapsed, perf_counter() - start)
-            print(f"Overall time elasped:  {elapsed:12.6f} s")
-            print(f"C Performance Test")
-            ctest = os.popen(f'./cholmod_c_test -f {path} -t{trail} '
-                             f'-m{modes[mode]} -o{ordering_methods[ordering]}')
-            print(ctest.read())
+    for mode, ordering in product(modes, ordering_methods):
+        print(f'mode {mode}, ordering method {ordering}')
+        print("Py Performance Test")
+        elapsed = 1e10
+        for _ in range(trail):
+            start = perf_counter()
+            cholesky(X, mode=mode, ordering_method=ordering)
+            elapsed = min(elapsed, perf_counter() - start)
+        print(f"Overall time elasped:  {elapsed:12.6f} s")
+        print("C Performance Test")
+        ctest = os.popen(f'./cholmod_c_test -f {path} -t{trail} '
+                         f'-m{modes[mode]} -o{ordering_methods[ordering]}')
+        print(ctest.read())
