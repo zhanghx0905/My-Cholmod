@@ -21,7 +21,7 @@ def test_correctness():
 
 
 @mark.skip
-def test_performaence():
+def test_performance():
     testcases = {'ted_B': 10, 's3rmt3m3': 5}
     for case, trial in testcases.items():
         mat = mm_matrix(case)
@@ -33,3 +33,7 @@ def test_performaence():
         print(f"Py Overall time elasped:  {elapsed:12.6f} s")
         ctest = os.popen(f'./qr_c_test -f ./test_data/{case}.mtx -t{trial} ')
         print(ctest.read())
+
+
+if __name__ == '__main__':
+    test_performance()

@@ -67,7 +67,8 @@ def test_performance():
             elapsed = min(elapsed, perf_counter() - start)
         print(f"Overall time elasped:  {elapsed:12.6f} s")
         print("C Performance Test")
-        ctest = os.popen(f'./cholmod_c_test -f ./test_data/{problem}.mtx -t{trial}')
+        ctest = os.popen(
+            f'./cholmod_c_test -f ./test_data/{problem}.mtx -t{trial}')
         print(ctest.read())
 
 
