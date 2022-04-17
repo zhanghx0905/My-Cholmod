@@ -4,9 +4,9 @@ from setuptools import Extension, setup
 
 extensions = [
     Extension(
-        "cholmod",
+        "sparsekit",
         [
-            "./cholmod.pyx"
+            "src/sparsekit.pyx"
         ],
         include_dirs=[
             numpy.get_include(),
@@ -28,17 +28,19 @@ extensions = [
         ]
     )
 ]
+cython_directives = {
+    'c_string_type': 'str',
+    'c_string_encoding': 'default',
+    'binding': True,
+}
 setup(
-    name='cholmod',
-    version='0.1',
-    packages=[''],
+    name='sparsekit',
+    version='0.2',
+    packages=[],
     package_data={
         '': ["*.pyi"]
     },
     ext_modules=cythonize(extensions,
                           language_level=3,
-                          compiler_directives={
-                              'c_string_type': 'str',
-                              'c_string_encoding': 'default'
-                          })
+                          compiler_directives=cython_directives)
 )

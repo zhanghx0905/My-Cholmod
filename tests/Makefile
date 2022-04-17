@@ -1,4 +1,4 @@
-all: cholmod_c_test
+all: cholmod_c_test qr_c_test
 
 LIB2 = -lcholmod -lamd -lcolamd -lsuitesparseconfig \
 	-llapack -lblas -lm -lrt
@@ -10,6 +10,9 @@ CLEAN = *.o
 cholmod_c_test: cholmod_c_test.c
 	$(C) -o cholmod_c_test $(I) cholmod_c_test.c $(LIB2)
 
+qr_c_test: qr_c_test.c
+	$(C) -o qr_c_test $(I) qr_c_test.c $(LIB2) -lspqr
+
 clean: 
 	- $(RM) -r $(CLEAN)
-	- $(RM) cholmod_c_test
+	- $(RM) cholmod_c_test qr_c_test

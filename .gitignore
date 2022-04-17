@@ -1,8 +1,9 @@
-*.o
-*.so
-*.zip
-src/*.c
-tests/cholmod_c_test
-tests/test_data/*mtx
 __pycache__
 .pytest_cache
+build
+.vscode
+*.egg-info
+
+src/*.c
+tests/*_c_test
+tests/test_data/*mtx

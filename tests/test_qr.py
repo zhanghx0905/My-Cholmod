@@ -1,40 +1,35 @@
-from functools import partial
-import numpy as np
-from cholmod import qr
+import os
+from time import perf_counter
 
-from scipy import sparse
-from numpy.testing import assert_allclose
+from pytest import mark
 
-assert_allclose = partial(assert_allclose, rtol=1e-5, atol=1e-8)
-real_matrix = sparse.csc_matrix([[10, 0, 3, 0],
-                                 [0, 5, 0, -2],
-                                 [3, 0, 5, 0],
-                                 [0, -2, 0, 2]])
-complex_matrix = sparse.csc_matrix([[10, 0, 3 - 1j, 0],
-                                    [0, 5, 0, -2],
-                                    [3 + 1j, 0, 5, 0],
-                                    [0, -2, 0, 2]])
+from sparsekit import qr
+from tools import (assert_allclose, complex_matrix, mm_matrix, perm_vec_to_mat,
+                   real_matrix)
 
 
-def mm_matrix(name: str) -> sparse.csc_matrix:
-    from scipy.io import mmread
-    matrix = mmread(f"./test_data/{name}.mtx")
-    assert sparse.issparse(matrix)
-    return matrix.tocsc()
+def test_correctness():
+    testcases = [
+        real_matrix, complex_matrix,
+        *[mm_matrix(f"case{problem}") for problem in range(1, 5)]
+    ]
+
+    for case in testcases:
+        Q, R, E, _ = qr(case)
+        P = perm_vec_to_mat(E)
+        assert_allclose((Q@R).todense(), (case @ P).todense())
 
 
-testcases = [
-    real_matrix, complex_matrix,
-    *[mm_matrix(f"case{problem}") for problem in range(1, 5)]
-]
-
-
-def perm_vec_to_mat(E: np.ndarray) -> sparse.csc_matrix:
-    n = len(E)
-    return sparse.csc_matrix((np.ones(n), (E, np.arange(n))), shape=(n, n))
-
-
-for case in testcases:
-    Q, R, E, _ = qr(case)
-    P = perm_vec_to_mat(E)
-    assert_allclose((Q*R).todense(), (case * P).todense())
+@mark.skip
+def test_performaence():
+    testcases = {'ted_B': 10, 's3rmt3m3': 5}
+    for case, trial in testcases.items():
+        mat = mm_matrix(case)
+        elapsed = 1e5
+        for _ in range(trial):
+            start = perf_counter()
+            qr(mat)
+            elapsed = min(elapsed, perf_counter() - start)
+        print(f"Py Overall time elasped:  {elapsed:12.6f} s")
+        ctest = os.popen(f'./qr_c_test -f ./test_data/{case}.mtx -t{trial} ')
+        print(ctest.read())
